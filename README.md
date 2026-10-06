@@ -1,2 +1,93 @@
-# DICOM-De-identification-check
-Evaluation of Identifying Information Processing and Preservation of Medical Image Analysis Data through a Comparison of DICOM Medical Images Before and After De-identification
+# DICOM 데이터 초기 검증 결과
+
+검증일: 2026년 10월 6일
+
+## 결론
+
+다운로드된 DICOM 3,672개를 pydicom 3.0.2로 읽어 메타데이터 목록을 만들었다. 비식별화 전 1,836개와 후 1,836개가 공식 UID 대응표를 통해 모두 일대일로 연결된다. 메타데이터 읽기 오류, 읽기 경고, 영상 고유번호 중복과 누락은 발견되지 않았다. 현재 보유 자료의 전후 메타데이터 비교를 시작할 수 있다.
+
+다만 논문 및 공식 페이지가 안내하는 각 1,693개와는 차이가 있다. 차이 143개는 모두 PET(코드 PT)에서 발생한다. 원인을 확정하거나 논문 표본과 동일하다고 간주하지 않는다.
+
+## 1 데이터 구성
+
+| 지표 | 비식별화 전 | 비식별화 후 |
+|---|---:|---:|
+| 파일 수 | 1,836 | 1,836 |
+| 고유 영상 UID 수 | 1,836 | 1,836 |
+| 환자 수 | 21 | 21 |
+| 검사 수 | 22 | 22 |
+| 시리즈 수 | 26 | 26 |
+| 저장 용량 bytes | 685,079,110 | 679,784,504 |
+
+시리즈는 한 검사 안의 영상 묶음이며, SOPInstanceUID는 개별 영상을 구분하는 고유번호이다. 같은 환자의 여러 영상은 독립적인 여러 환자가 아니다. 두 버전의 환자는 같은 대상을 나타내므로 환자 42명으로 합산하지 않는다.
+
+## 2 촬영 종류별 구성과 논문 대조
+
+| 촬영 종류 | 뜻 | 환자 수 각 버전 | 시리즈 수 각 버전 | 논문 파일 수 각 버전 | 실제 전 | 실제 후 | 차이 각 버전 |
+|---|---|---:|---:|---:|---:|---:|---:|
+| CT | 단층 X선 촬영 | 5 | 5 | 268 | 268 | 268 | 0 |
+| MR | MRI | 3 | 5 | 150 | 150 | 150 | 0 |
+| PT | PET | 5 | 6 | 1,203 | 1,346 | 1,346 | +143 |
+| DX | 디지털 X선 촬영 | 4 | 4 | 10 | 10 | 10 | 0 |
+| CR | 영상판을 읽는 X선 촬영 | 3 | 4 | 4 | 4 | 4 | 0 |
+| MG | 유방 X선 촬영 | 2 | 2 | 58 | 58 | 58 | 0 |
+| 전체 | 중복 환자 제외 | 21 | 26 | 1,693 | 1,836 | 1,836 | +143 |
+
+촬영 종류별 환자 수를 합하면 22명이지만, 고유한 환자는 21명이다. 한 환자가 두 종류에 걸쳐 있기 때문에 생기는 정상적인 중복 집계이다. 논문 파일 수는 Table 1에서 확인했다.
+
+## 3 전후 연결 검증
+
+- 환자 매핑: 21행이며 전·후 키에 빈값과 중복이 없다.
+- UID 매핑: 1,971행이며 전·후 키에 빈값과 중복이 없다.
+- 파일 구분: 환자 매핑의 evaluation 쪽을 before, de-identified 쪽을 after로 분류했다. 개별 영상 UID의 매핑 방향과도 전부 일치했다.
+- 전후 영상 연결: 1,836쌍 모두 일대일 대응한다.
+- 대응 영상의 환자·검사·시리즈 관계: 1,836쌍 모두 매핑과 일치한다.
+- 대응 영상의 촬영 종류, 행 수, 열 수, SOP 클래스: 1,836쌍 모두 동일하다.
+- 연결되지 않은 후 영상: 0개이다.
+
+UID 매핑의 1,971행 중 1,836행이 현재 보유한 개별 영상의 UID에 해당한다. 나머지 행을 모두 누락 영상으로 계산해서는 안 된다. 검사·시리즈 등 다른 수준의 UID도 매핑 대상이며, 각 행의 실제 사용 여부는 uid_mapping_coverage.csv에 기록했다.
+
+## 4 143개 차이에 대해 확인한 사실과 미확인 사항
+
+확인한 사실은 PET만 논문보다 143개 많고, 해당 영상들을 포함한 전체 자료가 전후 연결된다는 것이다. 동일 SOPInstanceUID를 가진 파일을 두 번 센 결과는 아니다. 다만 고유번호가 다르면서 픽셀 내용은 같은 경우까지 검사한 것은 아니다.
+
+공식 Version 2 안내에는 8개 시리즈에서 머리 영상을 제거했다는 기록이 있다. 이것이 현재 PET 파일 수 차이와 관련되는지는 확실하지 않다. 공식적인 개별 영상 목록 또는 과거 버전별 파일 목록과 대조하지 못했으므로 어떤 143개가 논문 표본에서 제외되었는지도 확정하지 않았다. 임의 삭제나 머리 부위 판정을 하지 않았다.
+
+보고서에는 “공식 설명은 버전당 1,693개이나 실제 확보한 자료는 버전당 1,836개이며, 차이는 PT에서 발생했다”고 명시한다. 현재 확보 자료를 분석하되 논문과 동일한 표본을 재현했다고 표현하지 않는다. 후속 해석에서 PET의 파일 수 비중이 크다는 점을 반영하고 환자·시리즈 단위 결과를 함께 제시한다.
+
+## 5 파일 안내
+
+| 파일 | 내용 |
+|---|---|
+| file_inventory.csv | DICOM 파일당 한 행인 메타데이터 목록 |
+| image_pairs.csv | 전후 영상 1,836쌍과 연결 검증 결과 |
+| dataset_summary.csv | 버전별 환자·검사·시리즈·영상 수 |
+| modality_summary.csv | 버전과 촬영 종류별 구성 |
+| series_summary.csv | 환자·검사·시리즈별 파일 수 |
+| paper_count_comparison.csv | 논문 Table 1과 실제 촬영 종류별 파일 수 비교 |
+| uid_mapping_coverage.csv | 매핑 각 행의 영상·검사·시리즈 사용 횟수 |
+| read_messages.csv | 읽기 오류·경고 기록. 현재 헤더만 있음 |
+| duplicate_or_missing_sop.csv | 중복 또는 누락된 영상 UID 기록. 현재 헤더만 있음 |
+| unmatched_after.csv | 연결되지 않은 후 영상. 현재 헤더만 있음 |
+| audit_summary.json | 기계가 읽을 수 있는 검증 요약과 실행 환경 |
+| analyze_dicom.py | 원본 메타데이터 추출과 검증을 재실행하는 코드 |
+| 01_데이터확인.ipynb | 결과를 읽고 직접 확인하는 초보자용 Notebook |
+
+CSV를 Excel로 열 때 환자 ID와 모든 UID는 텍스트로 가져온다. 자동 숫자 변환으로 ID가 바뀌면 연결이 깨질 수 있다. Notebook은 모든 원본 컬럼을 문자로 읽은 뒤, 집계에 필요한 개수만 숫자로 다룬다.
+
+file_inventory의 PixelSpacing·SliceThickness·ImagePositionPatient는 원본 DICOM 표현을 보존하며 거리 단위는 mm이다. ImageOrientationPatient는 방향을 나타내는 단위 없는 수치이다. 다중값은 역슬래시로 구분된다. 결측을 숫자 0으로 채우지 않았다. PatientName_state와 StudyDate_state는 missing(항목 없음), empty(빈값), value(값 있음)이며 값이 있다고 PHI임을 확정하지 않는다.
+
+## 6 검사 범위와 다음 단계
+
+메타데이터는 stop_before_pixels=True, force=False로 읽고 중첩 항목도 순회했다. 픽셀 데이터와 그 이후의 항목은 이번 검사의 대상이 아니다. 따라서 이 결과는 모든 영상 픽셀의 정상 해독, 임상적 품질 또는 비식별화 성공을 입증하지 않는다. 원본 영상과 원본 매핑 파일은 수정하지 않았다.
+
+다음 분석은 검증된 image_pairs.csv를 기준으로 이름·환자번호·날짜·설명 항목의 삭제·빈값·변경·유지를 분류하고, 픽셀 간격·두께·위치 정보의 보존 여부를 계산하는 것이다. 이름 항목의 값 존재 여부만으로 개인정보 잔존을 결론내리지 않는다.
+
+## 출처
+
+- 원본 영상: C:/Users/user/Downloads/pseudo_phi_dicom_data
+- 매핑: DICOM_Project/data/mapping의 patid_crosswalk.csv 및 uid_crosswalk.csv
+- Rutherford et al. (2021), Scientific Data 8, 183, Table 1: https://www.nature.com/articles/s41597-021-00967-y
+- 저자 소속기관 보관 논문 PDF: https://vtechworks.lib.vt.edu/bitstream/handle/10919/109609/s41597-021-00967-y.pdf
+- TCIA 공식 데이터 페이지: https://www.cancerimagingarchive.net/collection/pseudo-phi-dicom-data/
+- pydicom 읽기 API: https://pydicom.github.io/pydicom/stable/reference/generated/pydicom.filereader.dcmread.html
